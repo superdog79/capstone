@@ -15,6 +15,7 @@ using Windows.UI.Xaml.Navigation;
 using System.Threading.Tasks;
 using Windows.Devices.I2c;
 using Windows.Devices.Enumeration;
+using RaspberrypiTest1;
 
 namespace RaspberryPI_SensorTest
 {
@@ -25,19 +26,21 @@ namespace RaspberryPI_SensorTest
     {
         private I2cDevice I2CAccel;
         private DispatcherTimer timer;
+        private ConnectTheDotsHelper ctdHelper;
+        private List<ConnectTheDotsSensor> sensors; //dummy Sensor
 
         public MainPage()
         {
             this.InitializeComponent();
             Text_X_Axis.Text = "AA";
-            
+
+            InitSensor();
             StartScenarioAsync();
             
         }
 
         private async Task StartScenarioAsync()
-        {
-            
+        {            
             try
             {
                 var settings = new I2cConnectionSettings(0x49);
@@ -79,24 +82,47 @@ namespace RaspberryPI_SensorTest
             {
                 // If this next line crashes, then there was an error accessing the sensor.
                 I2CAccel.WriteRead(command, temperatureData);
-                String xText = String.Format("X Axis: {0:F3}G", temperatureData);
-                Text_X_Axis.Text = xText;
+                
 
                 //string result = BitConverter.ToString(temperatureData);
                 //System.Diagnostics.Debug.WriteLine("temperatureData: " + result);
 
-                short temperature = BitConverter.ToInt16(temperatureData, 0);                
+                //short temperature = BitConverter.ToInt16(temperatureData, 0);                
+                //System.Diagnostics.Debug.WriteLine("temperatureData: " + temperature);
+
+                int temperature = temperatureData[0];
                 System.Diagnostics.Debug.WriteLine("temperatureData: " + temperature);
 
-                //if(temperature < -100)
-                //    //애저에 보내지 않는다.
-                
+                String xText = String.Format("{0:F3}", temperature);
+                Text_X_Axis.Text = xText;
+
+                ConnectTheDotsSensor sensor = ctdHelper.sensors.Find(item => item.measurename == "Temperature");
+                sensor.value = temperature;
+                ctdHelper.SendSensorData(sensor);
+                                   
             }
             catch (Exception ex)
             {
                 String xText = String.Format("X Axis: Error");
                 System.Diagnostics.Debug.WriteLine("X Axis: Error : " + ex);
             }
+        }
+
+        private void InitSensor()
+        {
+            // Hard coding guid for sensors. Not an issue for this particular application which is meant for testing and demos
+            List<ConnectTheDotsSensor> sensors = new List<ConnectTheDotsSensor> {
+                new ConnectTheDotsSensor("ace60e7c-a6aa-4694-ba86-c3b66952558e", "Temperature", "F"),
+            };
+
+            ctdHelper = new ConnectTheDotsHelper(serviceBusNamespace: "capstone-ns",
+                eventHubName: "ehdevices",
+                keyName: "D1",
+                key: "YFzi8Hbg70bTumwPNP9NWuxD514RojH8ThhtRrlGwVU=",
+                displayName: "aaaaa",
+                organization: "bbb",
+                location: "cccc",
+                sensorList: sensors);
         }
     }
 
